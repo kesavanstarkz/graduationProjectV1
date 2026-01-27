@@ -94,6 +94,9 @@ async def validate_data(request: ValidationRequest, db: Session = Depends(get_db
                     "issue": i["issue"],
                     "ai_explanation": explanation,
                     "severity": i["severity"],
+                    "original_value": i.get("original_value"),
+                    "corrected_value": i.get("corrected_value"),
+                    "reason": i.get("reason"),
                     "dataset_name": request.original_name,
                     "edited_by": "AI",
                     "created_at": datetime.utcnow()

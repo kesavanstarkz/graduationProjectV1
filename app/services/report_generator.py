@@ -64,7 +64,7 @@ def generate_charts(all_issues):
     # Chart 1: Severity Distribution
     severity_counts = df_issues['severity'].value_counts()
     plt.figure(figsize=(6, 4))
-    colors = [COLORS['danger'] if s == 'High' else COLORS['warning'] if s == 'Medium' else COLORS['success'] for s in severity_counts.index]
+    colors = [COLORS['danger'] if s in ['High', 'Critical'] else COLORS['warning'] if s == 'Medium' else COLORS['success'] for s in severity_counts.index]
     # Convert rgb to 0-1 range for matplotlib
     norm_colors = [(r/255, g/255, b/255) for r, g, b in colors]
     
@@ -185,7 +185,11 @@ def generate_pdf_report(tables, db: Session):
         # Calculate height if multi-line needed (simplified here)
         pdf.cell(40, row_height, str(issue['dataset_name'])[:20], 0, 0, 'L', True)
         pdf.cell(30, row_height, str(issue['column_name']), 0, 0, 'L', True)
-        pdf.cell(80, row_height, str(issue['issue'])[:50], 0, 0, 'L', True)
+        observation = str(issue['issue'])
+        if issue.get('original_value') and issue.get('original_value') != 'None':
+            observation += f" (Val: {issue['original_value']} -> {issue['corrected_value']})"
+        
+        pdf.cell(80, row_height, observation[:50], 0, 0, 'L', True)
         
         # Severity Mini-badge
         sev = issue['severity']

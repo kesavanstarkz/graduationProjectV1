@@ -12,7 +12,7 @@ def verify_workflow():
     print("[INFO] Verifying Clinical Data Quality Workflow...\n")
 
     # 1. Dataset Upload (Simulation)
-    file_path = "data/test.csv"
+    file_path = "data/dmsap_test.csv"
     print(f"1. [Dataset Upload] Checking file: {file_path}")
     if not os.path.exists(file_path):
         print("   [ERROR] File not found. Please upload the file first.")
