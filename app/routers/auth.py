@@ -5,14 +5,14 @@ from datetime import timedelta
 from app.database import get_db
 from app.models import User
 from app.services.auth import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
-    password: str
+    password: str = Field(..., min_length=6, max_length=72)
 
 class Token(BaseModel):
     access_token: str

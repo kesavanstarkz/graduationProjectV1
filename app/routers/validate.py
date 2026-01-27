@@ -125,7 +125,7 @@ async def validate_data(request: ValidationRequest, db: Session = Depends(get_db
                 db.commit()
             
             print(f"🎉 [FINISH] Validation complete for {request.original_name}.")
-            yield json.dumps({"status": "complete", "table": table_name, "message": "Validation finished!"}) + "\n"
+            yield json.dumps({"status": "complete", "total": total_issues, "table": table_name, "message": "Validation finished!"}) + "\n"
                 
         except Exception as e:
             db.rollback()

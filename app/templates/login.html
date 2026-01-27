@@ -156,7 +156,7 @@
             </div>
             <div class="form-group">
                 <label>Password</label>
-                <input type="password" id="password" required placeholder="••••••••">
+                <input type="password" id="password" required minlength="6" maxlength="72" placeholder="••••••••">
             </div>
             <button type="submit" id="submitBtn" class="auth-btn">Login</button>
         </form>
@@ -234,7 +234,16 @@
                     localStorage.setItem('token', data.access_token);
                     window.location.href = '/';
                 } else {
-                    statusBox.innerText = data.detail || 'Authentication failed';
+                    if (Array.isArray(data.detail)) {
+                        // Handle FastAPI validation errors (422)
+                        const errors = data.detail.map(err => {
+                            const field = err.loc[err.loc.length - 1];
+                            return `${field}: ${err.msg}`;
+                        }).join(', ');
+                        statusBox.innerText = errors;
+                    } else {
+                        statusBox.innerText = data.detail || 'Authentication failed';
+                    }
                     statusBox.className = 'status-msg error';
                 }
             } catch (err) {

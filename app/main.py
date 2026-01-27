@@ -7,7 +7,9 @@ from app.database import engine
 from app.models import Base
 from app.routers import upload, validate, issues, report, auth, stats
 
+
 Base.metadata.create_all(bind=engine)
+
 
 app = FastAPI(title="Clinical Data Quality Checker")
 

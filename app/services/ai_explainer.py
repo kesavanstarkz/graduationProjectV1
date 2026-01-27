@@ -142,7 +142,7 @@ async def explain_issue(issue: dict, row_data: dict) -> str:
     except Exception as e:
         print(f"⚠️ Vector DB Search Error: {e}")
 
-    # 2. If no hit, proceed with LLM...
+    # 2. If no hit, proceed with local DeepSeek (as requested for analysis) ...
     prompt = f"""
 You are a Senior Clinical Data Scientist.
 
@@ -179,12 +179,16 @@ RECOMMENDED ACTION:
                 response = await client.post(
                     OLLAMA_URL,
                     json=payload,
-                    timeout=120  # Increased timeout for slower local generation
+                    timeout=120
                 )
 
                 response.raise_for_status()
                 explanation = response.json().get("response", "").strip()
                 
+                # Strip DeepSeek thinking tags if they leak into internal analysis
+                if "</think>" in explanation:
+                    explanation = explanation.split("</think>")[-1].strip()
+
                 # 3. Store the new explanation in ChromaDB for future intelligence
                 try:
                     store_explanation(issue.get('issue'), issue.get('column'), row_data, explanation)
@@ -193,14 +197,11 @@ RECOMMENDED ACTION:
                     
                 return explanation
 
-        except httpx.TimeoutException:
-            print(f"⚠️ Ollama timeout (attempt {attempt + 1}/{max_retries}). Retrying...")
-            if attempt < max_retries - 1:
-                await asyncio.sleep(2)
-                continue
         except Exception as e:
-            print(f"❌ Local DeepSeek Error: {e}")
-            break
+            print(f"❌ Local DeepSeek Error (attempt {attempt+1}): {e}")
+            if attempt < max_retries - 1:
+                await asyncio.sleep(1)
+                continue
             
     return _get_fallback_explanation(issue)
 
@@ -235,3 +236,34 @@ def _get_fallback_explanation(issue: dict) -> str:
         "CLINICAL IMPACT: May compromise downstream clinical analysis.\n"
         "RECOMMENDED ACTION: Manual review recommended."
     )
+
+async def ollama_chat(prompt: str) -> str:
+    """Specialized chat function using only the local DeepSeek model."""
+    print(f"📡 [OLLAMA] Sending chat request (Prompt length: {len(prompt)})")
+    try:
+        payload = {
+            "model": LOCAL_MODEL_NAME,
+            "prompt": f"You are a Clinical Data Assistant. Answer surgically.\n\n{prompt}",
+            "stream": False,
+            "options": {
+                "temperature": 0.3,
+                "num_predict": 800
+            }
+        }
+        async with httpx.AsyncClient() as client:
+            response = await client.post(OLLAMA_URL, json=payload, timeout=90)
+            if response.status_code == 200:
+                ai_response = response.json().get("response", "").strip()
+                
+                # Strip DeepSeek thinking tags
+                if "</think>" in ai_response:
+                    ai_response = ai_response.split("</think>")[-1].strip()
+                
+                if ai_response:
+                    print(f"✅ [OLLAMA] Received response ({len(ai_response)} chars)")
+                    return ai_response
+            else:
+                print(f"❌ [OLLAMA] HTTP Error {response.status_code}: {response.text}")
+    except Exception as e:
+        print(f"❌ [OLLAMA] Chat Exception: {e}")
+    return ""

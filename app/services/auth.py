@@ -1,8 +1,8 @@
 import os
+import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,13 +11,34 @@ SECRET_KEY = os.getenv("SECRET_KEY", "09d25e094faa6ca2556c818166b7a9563b93f7099f
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 30))
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def verify_password(plain_password: str, hashed_password: str):
+    """Verify a plain password against a hashed password using direct bcrypt."""
+    try:
+        # Bcrypt 4.0.0+ requires bytes for both arguments
+        # If hashed_password is a string, encode it
+        if isinstance(hashed_password, str):
+            hashed_password = hashed_password.encode('utf-8')
+        
+        # Plain password must be encoded
+        password_bytes = plain_password.encode('utf-8')
+        
+        # Ensure it's not too long for bcrypt
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
+            
+        return bcrypt.checkpw(password_bytes, hashed_password)
+    except Exception as e:
+        print(f"❌ [AUTH] Password verification error: {e}")
+        return False
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
+def get_password_hash(password: str):
+    """Generate a bcrypt hash for a plain password."""
+    # Bcrypt has a 72-byte limit. We truncate to prevent ValueError in newer bcrypt versions.
+    password_bytes = password.encode('utf-8')
+    if len(password_bytes) > 72:
+        password_bytes = password_bytes[:72]
+        
+    return bcrypt.hashpw(password_bytes, bcrypt.gensalt()).decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
