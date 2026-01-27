@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clinical Data Quality Checker</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .datasets-section {
+            padding: 30px 40px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .datasets-section h3 {
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            margin: 0 0 16px 0;
+            font-weight: 600;
+        }
+
+        .dataset-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .dataset-item {
+            background: white;
+            padding: 16px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s;
+        }
+
+        .dataset-item:hover {
+            border-color: var(--accent-color);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.1);
+        }
+
+        .dataset-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .dataset-info i {
+            color: var(--accent-color);
+            font-size: 1.2rem;
+        }
+
+        .dataset-name {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        .dataset-meta {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .dataset-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .dataset-actions button {
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            height: auto;
+        }
+
+        .issue-details {
+            background: #f8fafc;
+            border-left: 4px solid var(--accent-color);
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+            margin-top: 12px;
+        }
+
+        .detail-section {
+            margin-bottom: 16px;
+        }
+
+        .detail-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .detail-label {
+            font-weight: 700;
+            color: var(--primary-color);
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .detail-content {
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .detail-content ul {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+
+        .detail-content li {
+            margin: 4px 0;
+        }
+
+        .affected-rows {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .expand-toggle {
+            cursor: pointer;
+            color: var(--accent-color);
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            user-select: none;
+        }
+
+        .expand-toggle:hover {
+            text-decoration: underline;
+        }
+
+        .expand-toggle i {
+            transition: transform 0.3s;
+        }
+
+        .expand-toggle.expanded i {
+            transform: rotate(180deg);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .no-datasets {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .no-datasets i {
+            font-size: 3rem;
+            opacity: 0.3;
+            display: block;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="background-blur"></div>
+    <div class="container">
+        <header style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <h2><i class="fas fa-heartbeat"></i> Clinical Data Quality Checker</h2>
+                <p class="subtitle">AI-Powered Data Validation & Analysis</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <a href="/dashboard"
+                    style="text-decoration: none; background: white; color: var(--primary-color); border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 6px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-chart-pie"></i> Dashboard
+                </a>
+                <button onclick="logout()"
+                    style="background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); padding: 8px 16px; height: auto;">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <div class="control-panel">
+            <div class="file-upload-section">
+                <label for="fileInput" class="file-label">
+                    <i class="fas fa-upload"></i>
+                    Choose CSV Files
+                </label>
+                <input type="file" id="fileInput" accept=".csv" multiple>
+                <span id="fileName"></span>
+            </div>
+
+            <div class="actions">
+                <button id="uploadBtn" disabled>
+                    <i class="fas fa-cloud-upload-alt"></i> Upload & Analyze
+                </button>
+            </div>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <!-- Datasets Section -->
+        <div class="datasets-section">
+            <h3><i class="fas fa-database"></i> Uploaded Datasets</h3>
+            <div id="datasetList" class="dataset-list">
+                <div class="no-datasets">
+                    <i class="fas fa-folder-open"></i>
+                    <p>No datasets uploaded yet. Upload CSV files to begin analysis.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Issues Section -->
+        <div class="results-section">
+            <h3><i class="fas fa-clipboard-list"></i> Detected Issues & Expert Analysis</h3>
+            <div class="table-container">
+                <table id="issuesTable">
+                    <thead>
+                        <tr>
+                            <th>Dataset</th>
+                            <th>Column</th>
+                            <th>Issue & Analysis</th>
+                            <th>Severity</th>
+                            <th>Edited By</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="issuesBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #94a3b8; padding: 60px 20px;">
+                                <i class="fas fa-inbox"
+                                    style="font-size: 3rem; margin-bottom: 16px; display: block; opacity: 0.3;"></i>
+                                Upload and analyze datasets to view issues
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // AUTH CHECK
+        if (!localStorage.getItem('token')) {
+            window.location.href = '/login';
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+
+        // Intercept all fetch calls to add Token
+        const originalFetch = window.fetch;
+        window.fetch = async (...args) => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                args[1] = args[1] || {};
+                args[1].headers = args[1].headers || {};
+                // Only add token if not already present or for local API
+                if (!args[1].headers['Authorization']) {
+                    args[1].headers['Authorization'] = `Bearer ${token}`;
+                }
+            }
+            const response = await originalFetch(...args);
+            if (response.status === 401) {
+                logout();
+            }
+            return response;
+        };
+
+        let uploadedDatasets = [];
+        let allIssues = [];
+
+        // File selection
+        document.getElementById('fileInput').addEventListener('change', function (e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                const fileNames = Array.from(files).map(f => f.name).join(', ');
+                document.getElementById('fileName').innerHTML = `<i class="fas fa-file-csv"></i> ${files.length} file(s) selected`;
+                document.getElementById('uploadBtn').disabled = false;
+            }
+        });
+
+        // Upload and analyze files
+        document.getElementById('uploadBtn').addEventListener('click', async function () {
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files;
+
+            if (files.length === 0) {
+                showStatus('Please select at least one file', 'error');
+                return;
+            }
+
+            this.disabled = true;
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                await uploadAndAnalyzeFile(file);
+            }
+
+            this.disabled = false;
+            fileInput.value = '';
+            document.getElementById('fileName').innerHTML = '';
+            this.disabled = true;
+        });
+
+        async function uploadAndAnalyzeFile(file) {
+            // Upload
+            const formData = new FormData();
+            formData.append('files', file);
+
+            showStatus(`Uploading ${file.name}...`, 'loading');
+
+            try {
+                const uploadResponse = await fetch('/upload/', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const uploadData = await uploadResponse.json();
+
+                if (!uploadResponse.ok) {
+                    showStatus(`Upload failed for ${file.name}: ${uploadData.error || 'Unknown error'}`, 'error');
+                    return;
+                }
+
+                const uploadedFile = uploadData.uploaded_files[0];
+                const fileId = uploadedFile.filename.replace('.csv', '');
+
+                // Add to dataset list
+                const dataset = {
+                    id: fileId,
+                    name: file.name,
+                    uploadTime: new Date().toLocaleString(),
+                    status: 'analyzing'
+                };
+                uploadedDatasets.push(dataset);
+                renderDatasets();
+
+                // Analyze
+                showStatus(`Analyzing ${file.name}...`, 'loading');
+
+                const validateResponse = await fetch('/validate/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        filename: uploadedFile.filename,
+                        original_name: file.name
+                    })
+                });
+
+                // Handle streaming response
+                const reader = validateResponse.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                let tableName = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    for (const line of lines) {
+                        if (!line.trim()) continue;
+
+                        try {
+                            const data = JSON.parse(line);
+
+                            if (data.status === 'complete') {
+                                tableName = data.table;
+                                dataset.status = 'complete';
+                                dataset.tableName = tableName;
+                                renderDatasets();
+                                showStatus(`Analysis complete for ${file.name}!`, 'success');
+                                await loadIssuesForDataset(tableName, file.name);
+                            } else if (data.status === 'progress') {
+                                showStatus(`Analyzing ${file.name}... ${data.processed}/${data.total} issues`, 'loading');
+                            } else if (data.status === 'error') {
+                                dataset.status = 'error';
+                                renderDatasets();
+                                showStatus(`Analysis failed for ${file.name}: ${data.message}`, 'error');
+                            }
+                        } catch (e) {
+                            console.error('Failed to parse streaming data:', e);
+                        }
+                    }
+                }
+            } catch (error) {
+                showStatus(`Error processing ${file.name}: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadIssuesForDataset(tableName, datasetName) {
+            try {
+                const response = await fetch(`/issues/${tableName}`);
+                const issues = await response.json();
+
+                issues.forEach(issue => {
+                    issue.dataset_name = datasetName;
+                    issue.table_name = tableName;
+                });
+
+                allIssues = allIssues.concat(issues);
+                renderIssues();
+            } catch (error) {
+                showStatus(`Error loading issues for ${datasetName}: ${error.message}`, 'error');
+            }
+        }
+
+        function renderDatasets() {
+            const container = document.getElementById('datasetList');
+
+            if (uploadedDatasets.length === 0) {
+                container.innerHTML = `
+                    <div class="no-datasets">
+                        <i class="fas fa-folder-open"></i>
+                        <p>No datasets uploaded yet. Upload CSV files to begin analysis.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = uploadedDatasets.map(dataset => `
+                <div class="dataset-item">
+                    <div class="dataset-info">
+                        <i class="fas fa-file-csv"></i>
+                        <div>
+                            <div class="dataset-name">${dataset.name}</div>
+                            <div class="dataset-meta">
+                                Uploaded: ${dataset.uploadTime} | 
+                                Status: ${dataset.status === 'complete' ? '✓ Analyzed' : dataset.status === 'analyzing' ? '⏳ Analyzing...' : '✗ Error'}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dataset-actions">
+                        ${dataset.status === 'complete' ? `
+                            <button onclick="viewDatasetIssues('${dataset.tableName}')" style="background: var(--accent-color); border-radius: 6px;">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button onclick="downloadDatasetReport('${dataset.tableName}')" style="background: var(--primary-color); border-radius: 6px;">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </button>
+                            <button onclick="sendDatasetReport('${dataset.tableName}')" style="background: var(--success-color); border-radius: 6px;">
+                                <i class="fas fa-envelope"></i> Email
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderIssues() {
+            const tbody = document.getElementById('issuesBody');
+
+            if (allIssues.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #10b981; padding: 40px 20px;">
+                            <i class="fas fa-check-circle" style="font-size: 2.5rem; margin-bottom: 12px; display: block;"></i>
+                            No data quality issues detected across all datasets!
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = allIssues.map((issue, idx) => `
+                <tr>
+                    <td><strong>${issue.dataset_name || 'Unknown'}</strong></td>
+                    <td><strong>${issue.column_name}</strong></td>
+                    <td>
+                        <span class="issue-main-text">${issue.issue}</span>
+                        <div class="expand-toggle" onclick="toggleDetails(${idx})">
+                            <span>View AI Analysis & Affected Rows</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div id="details-${idx}" class="issue-details hidden">
+                            ${formatDetailedAnalysis(issue)}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="severity-badge severity-${issue.severity.toLowerCase()}">
+                            ${issue.severity}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="edited-badge edited-${issue.edited_by ? issue.edited_by.toLowerCase() : 'ai'}">
+                            ${issue.edited_by || 'AI'}
+                        </span>
+                    </td>
+                    <td>
+                        <button onclick="deleteIssue('${issue.table_name}', ${issue.id}, ${idx})" 
+                                style="padding: 8px 16px; font-size: 0.85rem; background: var(--danger-color);">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function formatDetailedAnalysis(issue) {
+            const text = issue.ai_explanation || 'No analysis available';
+
+            let html = '';
+
+            // Use regex to extract sections - handles multi-line content and case-insensitive labels
+            const observationMatch = text.match(/DETAILED OBSERVATION:\s*([\s\S]+?)(?=\s*(?:CLINICAL IMPACT:|RECOMMENDED ACTION:|$))/i);
+            const impactMatch = text.match(/CLINICAL IMPACT:\s*([\s\S]+?)(?=\s*(?:RECOMMENDED ACTION:|DETAILED OBSERVATION:|$))/i);
+            const actionMatch = text.match(/RECOMMENDED ACTION:\s*([\s\S]+?)(?=\s*(?:DETAILED OBSERVATION:|CLINICAL IMPACT:|$))/i);
+
+            if (observationMatch || impactMatch || actionMatch) {
+                if (observationMatch && observationMatch[1].trim()) {
+                    html += `
+                        <div class="detail-section">
+                            <span class="detail-label"><i class="fas fa-eye"></i> Detailed Observation</span>
+                            <div class="detail-content" contenteditable="true" onblur="updateIssueContent('${issue.table_name}', ${issue.id}, 'observation', this)">
+                                ${observationMatch[1].trim().replace(/\n/g, '<br>')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (impactMatch && impactMatch[1].trim()) {
+                    html += `
+                        <div class="detail-section">
+                            <span class="detail-label"><i class="fas fa-exclamation-triangle"></i> Clinical Impact</span>
+                            <div class="detail-content" contenteditable="true" onblur="updateIssueContent('${issue.table_name}', ${issue.id}, 'impact', this)">
+                                ${impactMatch[1].trim().replace(/\n/g, '<br>')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                if (actionMatch && actionMatch[1].trim()) {
+                    html += `
+                        <div class="detail-section">
+                            <span class="detail-label"><i class="fas fa-tasks"></i> Recommended Action</span>
+                            <div class="detail-content" contenteditable="true" onblur="updateIssueContent('${issue.table_name}', ${issue.id}, 'action', this)">
+                                ${actionMatch[1].trim().replace(/\n/g, '<br>')}
+                            </div>
+                        </div>
+                    `;
+                }
+            } else {
+                html = `
+                    <div class="detail-section">
+                        <span class="detail-label"><i class="fas fa-info-circle"></i> AI Analysis</span>
+                        <div class="detail-content" contenteditable="true" onblur="updateIssueContent('${issue.table_name}', ${issue.id}, 'raw', this)">
+                            ${text.replace(/\n/g, '<br>')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `
+                <div class="detail-section">
+                    <span class="detail-label"><i class="fas fa-table"></i> Affected Rows</span>
+                    <div class="affected-rows">
+                        <i class="fas fa-map-marker-alt"></i>
+                        Row ${issue.row_number}
+                    </div>
+                </div>
+            `;
+
+            return html;
+        }
+
+        function toggleDetails(idx) {
+            const details = document.getElementById(`details-${idx}`);
+            const toggle = details.previousElementSibling;
+
+            details.classList.toggle('hidden');
+            toggle.classList.toggle('expanded');
+        }
+
+        function viewDatasetIssues(tableName) {
+            const filteredIssues = allIssues.filter(issue => issue.table_name === tableName);
+            const tbody = document.getElementById('issuesBody');
+
+            if (filteredIssues.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: #10b981; padding: 40px 20px;">
+                            <i class="fas fa-check-circle" style="font-size: 2.5rem; margin-bottom: 12px; display: block;"></i>
+                            No issues found in this dataset!
+                        </td>
+                    </tr>
+                `;
+            } else {
+                // Scroll to issues section
+                document.querySelector('.results-section').scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        async function downloadDatasetReport(tableName) {
+            showStatus('Generating PDF report...', 'loading');
+            try {
+                // Using FileResponse endpoint
+                window.location.href = `/report/download?tables=${tableName}`;
+                setTimeout(() => showStatus('Report download started!', 'success'), 2000);
+            } catch (error) {
+                showStatus(`Download error: ${error.message}`, 'error');
+            }
+        }
+
+        async function sendDatasetReport(tableName) {
+            const email = prompt('Enter email address to send the report:');
+            if (!email) return;
+
+            showStatus('Generating and sending report...', 'loading');
+
+            try {
+                const response = await fetch('/report/send-email', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        tables: [tableName],
+                        email: email
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showStatus(`Report sent successfully to ${email}!`, 'success');
+                } else {
+                    showStatus(`Failed to send report: ${data.detail || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function updateIssueContent(tableName, issueId, section, element) {
+            const newText = element.innerText;
+            // Since AI response is structured, we'd ideally rebuild the whole string
+            // For now, let's update the database with the edited content
+            // To be robust, we fetch the original, swap the section, and save
+
+            try {
+                // We'll just save the final content back to 'ai_explanation'
+                // But since we have multiple sections, we rebuild the whole string
+                const parent = element.closest('.issue-details');
+                let fullExplanation = '';
+
+                const obs = parent.querySelector('[onblur*="observation"]')?.innerText;
+                const impact = parent.querySelector('[onblur*="impact"]')?.innerText;
+                const action = parent.querySelector('[onblur*="action"]')?.innerText;
+                const raw = parent.querySelector('[onblur*="raw"]')?.innerText;
+
+                if (raw) {
+                    fullExplanation = raw;
+                } else {
+                    if (obs) fullExplanation += `DETAILED OBSERVATION:\n${obs}\n\n`;
+                    if (impact) fullExplanation += `CLINICAL IMPACT:\n${impact}\n\n`;
+                    if (action) fullExplanation += `RECOMMENDED ACTION:\n${action}\n\n`;
+                }
+
+                const response = await fetch(`/issues/${tableName}/${issueId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ai_explanation: fullExplanation.trim(),
+                        edited_by: 'Manual'
+                    })
+                });
+
+                if (response.ok) {
+                    showStatus('Content updated and saved!', 'success');
+                    // Find it in our local array and update it
+                    const issue = allIssues.find(i => i.id === issueId && i.table_name === tableName);
+                    if (issue) {
+                        issue.ai_explanation = fullExplanation.trim();
+                        issue.edited_by = 'Manual';
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to update content:', e);
+            }
+        }
+
+        async function deleteIssue(tableName, issueId, idx) {
+            if (!confirm('Are you sure you want to delete this issue?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/issues/${tableName}/${issueId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    allIssues.splice(idx, 1);
+                    renderIssues();
+                    showStatus('Issue deleted successfully!', 'success');
+                } else {
+                    showStatus('Failed to delete issue', 'error');
+                }
+            } catch (error) {
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.className = `status-message ${type}`;
+
+            if (type === 'loading') {
+                statusDiv.innerHTML = `<span class="spinner"></span>${message}`;
+            } else {
+                const icon = type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle';
+                statusDiv.innerHTML = `<i class="fas fa-${icon}"></i> ${message}`;
+            }
+
+            statusDiv.style.display = 'block';
+
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+    </script>
+</body>
+
+</html>

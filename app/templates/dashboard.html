@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quality Analytics Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        header h2 {
+            font-size: 1.8rem;
+            color: #1e293b;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .back-link {
+            text-decoration: none;
+            color: #64748b;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .back-link:hover {
+            color: #2563eb;
+        }
+
+        .logout-btn {
+            background: white;
+            border: 1px solid #e2e8f0;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: #475569;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background-color: #f1f5f9;
+        }
+
+        .subtitle {
+            color: #64748b;
+            margin: 5px 0 0 0;
+            font-size: 0.95rem;
+        }
+
+        /* Summary Cards */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); /* very subtle shadow */
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            border: 1px solid #f1f5f9;
+        }
+
+        .icon-box {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .icon-blue { background: #eff6ff; color: #3b82f6; } /* Blue for Datasets */
+        .icon-red { background: #fef2f2; color: #ef4444; } /* Red/Pink for Issues */
+        .icon-orange { background: #fff7ed; color: #f97316; } /* Orange for Rate */
+
+        .card-content h3 {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .card-content .value {
+            margin: 4px 0 0 0;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        /* Charts Section */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            border: 1px solid #f1f5f9;
+            min-height: 400px;
+        }
+
+        .chart-container h3 {
+            margin: 0 0 20px 0;
+            color: #1e293b;
+            font-size: 1.1rem;
+            border-bottom: 2px solid #f1f5f9;
+            padding-bottom: 12px;
+        }
+
+        @media (max-width: 900px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+    </style>
+</head>
+
+<body>
+    
+    <div class="container">
+        
+        <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Analysis</a>
+
+        <header>
+            <div>
+                <h2><i class="fas fa-chart-line"></i> Quality Analytics Dashboard</h2>
+                <p class="subtitle">Real-time insights across all clinical datasets</p>
+            </div>
+            <button class="logout-btn" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </header>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards">
+            <!-- Datasets -->
+            <div class="card">
+                <div class="icon-box icon-blue">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="card-content">
+                    <h3>Datasets</h3>
+                    <div class="value" id="total-datasets">-</div>
+                </div>
+            </div>
+
+            <!-- Total Issues -->
+            <div class="card">
+                <div class="icon-box icon-red">
+                    <i class="fas fa-bug"></i>
+                </div>
+                <div class="card-content">
+                    <h3>Total Issues</h3>
+                    <div class="value" id="total-issues">-</div>
+                </div>
+            </div>
+
+            <!-- Critical Rate -->
+            <div class="card">
+                <div class="icon-box icon-orange">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <div class="card-content">
+                    <h3>Critical Rate</h3>
+                    <div class="value" id="critical-rate">-</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <h3>Issue Severity Distribution</h3>
+                <canvas id="severityChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>Top Problematic Columns</h3>
+                <canvas id="columnsChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Auth Check
+        if (!localStorage.getItem('token')) {
+            window.location.href = '/login';
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+
+        // Fetch Data
+        async function fetchStats() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/stats/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                if (response.status === 401) logout();
+                
+                const data = await response.json();
+                
+                // Update Cards
+                document.getElementById('total-datasets').textContent = data.summary.total_datasets;
+                document.getElementById('total-issues').textContent = data.summary.total_issues;
+                document.getElementById('critical-rate').textContent = data.summary.critical_rate + '%';
+
+                // Render Charts
+                renderSeverityChart(data.severity_distribution);
+                renderColumnsChart(data.top_columns);
+
+            } catch (error) {
+                console.error("Error fetching stats:", error);
+            }
+        }
+
+        function renderSeverityChart(data) {
+            const ctx = document.getElementById('severityChart').getContext('2d');
+            
+            // Prepare data
+            const labels = Object.keys(data);
+            const values = Object.values(data);
+            
+            // Colors mapping
+            const colors = {
+                'Critical': '#ef4444',
+                'Warning': '#f97316',
+                'Info': '#3b82f6',
+                'Unknown': '#94a3b8'
+            };
+            
+            const backgroundColors = labels.map(label => colors[label] || '#cbd5e1');
+
+            new Chart(ctx, {
+                type: 'bar', // Using bar as per requirement (or dougnut if preferred, but requests bar usually)
+                // Actually image showed a bar or similar on left? Image was empty box. 
+                // Let's use Bar for Severity as it's clear.
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Issues Count',
+                        data: values,
+                        backgroundColor: backgroundColors,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#f1f5f9'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        function renderColumnsChart(data) {
+            const ctx = document.getElementById('columnsChart').getContext('2d');
+            
+            const labels = data.map(item => item.column);
+            const values = data.map(item => item.count);
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Issues Found',
+                        data: values,
+                        backgroundColor: '#64748b',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Horizontal bar chart for columns often looks better
+                    responsive: true,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#f1f5f9'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Init
+        fetchStats();
+    </script>
+</body>
+</html>

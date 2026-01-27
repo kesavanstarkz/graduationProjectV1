@@ -1,0 +1,6 @@
+patient_id,age,sex,diagnosis,visit_date
+M001,34,M,Normal,2024-02-01
+M002,58,F,Diabetes,2024-02-02
+M003,45,M,Hypertension,2024-02-03
+M004,29,F,Normal,2024-02-04
+M005,162,M,Diabetes,2024-02-05
