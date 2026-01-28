@@ -13,7 +13,7 @@
             background-color: #f8fafc;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -45,7 +45,7 @@
             gap: 5px;
             margin-bottom: 15px;
         }
-        
+
         .back-link:hover {
             color: #2563eb;
         }
@@ -83,7 +83,8 @@
             background: white;
             padding: 24px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); /* very subtle shadow */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            /* very subtle shadow */
             display: flex;
             align-items: center;
             gap: 20px;
@@ -100,9 +101,24 @@
             font-size: 1.5rem;
         }
 
-        .icon-blue { background: #eff6ff; color: #3b82f6; } /* Blue for Datasets */
-        .icon-red { background: #fef2f2; color: #ef4444; } /* Red/Pink for Issues */
-        .icon-orange { background: #fff7ed; color: #f97316; } /* Orange for Rate */
+        .icon-blue {
+            background: #eff6ff;
+            color: #3b82f6;
+        }
+
+        /* Blue for Datasets */
+        .icon-red {
+            background: #fef2f2;
+            color: #ef4444;
+        }
+
+        /* Red/Pink for Issues */
+        .icon-orange {
+            background: #fff7ed;
+            color: #f97316;
+        }
+
+        /* Orange for Rate */
 
         .card-content h3 {
             margin: 0;
@@ -147,14 +163,13 @@
                 grid-template-columns: 1fr;
             }
         }
-        
     </style>
 </head>
 
 <body>
-    
+
     <div class="container">
-        
+
         <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Back to Analysis</a>
 
         <header>
@@ -162,9 +177,15 @@
                 <h2><i class="fas fa-chart-line"></i> Quality Analytics Dashboard</h2>
                 <p class="subtitle">Real-time insights across all clinical datasets</p>
             </div>
-            <button class="logout-btn" onclick="logout()">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </button>
+            <div style="display: flex; gap: 10px;">
+                <a href="/langsmith"
+                    style="text-decoration: none; background: white; color: #1e293b; border: 1px solid #e2e8f0; padding: 8px 16px; border-radius: 6px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-terminal"></i> LangSmith
+                </a>
+                <button class="logout-btn" onclick="logout()">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
         </header>
 
         <!-- Summary Cards -->
@@ -237,11 +258,11 @@
                         'Authorization': `Bearer ${token}`
                     }
                 });
-                
+
                 if (response.status === 401) logout();
-                
+
                 const data = await response.json();
-                
+
                 // Update Cards
                 document.getElementById('total-datasets').textContent = data.summary.total_datasets;
                 document.getElementById('total-issues').textContent = data.summary.total_issues;
@@ -258,11 +279,11 @@
 
         function renderSeverityChart(data) {
             const ctx = document.getElementById('severityChart').getContext('2d');
-            
+
             // Prepare data
             const labels = Object.keys(data);
             const values = Object.values(data);
-            
+
             // Colors mapping
             const colors = {
                 'Critical': '#ef4444',
@@ -270,7 +291,7 @@
                 'Info': '#3b82f6',
                 'Unknown': '#94a3b8'
             };
-            
+
             const backgroundColors = labels.map(label => colors[label] || '#cbd5e1');
 
             new Chart(ctx, {
@@ -310,7 +331,7 @@
 
         function renderColumnsChart(data) {
             const ctx = document.getElementById('columnsChart').getContext('2d');
-            
+
             const labels = data.map(item => item.column);
             const values = data.map(item => item.count);
 
@@ -349,4 +370,5 @@
         fetchStats();
     </script>
 </body>
+
 </html>

@@ -5,7 +5,7 @@ from fastapi.requests import Request
 
 from app.database import engine
 from app.models import Base
-from app.routers import upload, validate, issues, report, auth, stats
+from app.routers import upload, validate, issues, report, auth, stats, langsmith
 
 
 Base.metadata.create_all(bind=engine)
@@ -19,6 +19,7 @@ app.include_router(validate.router)
 app.include_router(issues.router)
 app.include_router(report.router)
 app.include_router(stats.router)
+app.include_router(langsmith.router)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
@@ -34,3 +35,7 @@ def login_page(request: Request):
 @app.get("/dashboard")
 def dashboard_page(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
+
+@app.get("/langsmith")
+def langsmith_page(request: Request):
+    return templates.TemplateResponse("langsmith.html", {"request": request})

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangSmith Execution Traces</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 0 40px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .status-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+
+        .status-success {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        /* Side Panel */
+        .side-panel {
+            position: fixed;
+            top: 0;
+            right: -600px;
+            width: 600px;
+            height: 100vh;
+            background: white;
+            box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
+            z-index: 3000;
+            transition: right 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .side-panel.open {
+            right: 0;
+        }
+
+        .panel-header {
+            padding: 30px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+        }
+
+        .panel-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .json-block {
+            background: #f1f5f9;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            overflow-x: auto;
+            margin-top: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            margin: 20px 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .child-run-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 2999;
+            display: none;
+            backdrop-filter: blur(2px);
+        }
+
+        .overlay.open {
+            display: block;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding-bottom: 40px;
+        }
+
+        .pagination button {
+            height: 40px;
+            padding: 0 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="background-blur"></div>
+    <div class="container">
+        <header style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <a href="/"
+                    style="text-decoration: none; color: var(--text-secondary); font-size: 0.9rem; display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                </a>
+                <h2><i class="fas fa-terminal"></i> LangSmith Traces</h2>
+                <p class="subtitle">Observability & Execution Logs</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <a href="/dashboard"
+                    style="text-decoration: none; background: white; color: var(--primary-color); border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 6px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-chart-pie"></i> Dashboard
+                </a>
+                <a href="/langsmith"
+                    style="text-decoration: none; background: var(--accent-color); color: white; border: 1px solid var(--accent-color); padding: 8px 16px; border-radius: 6px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;">
+                    <i class="fas fa-terminal"></i> LangSmith
+                </a>
+                <button onclick="logout()"
+                    style="background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); padding: 8px 16px; height: auto; box-shadow: none;">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Summary -->
+        <div id="statsContainer" class="summary-cards">
+            <div class="stat-card">
+                <span class="stat-label">Total Traces</span>
+                <span id="stat-total" class="stat-value">-</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Error Rate</span>
+                <span id="stat-error-rate" class="stat-value">-</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Avg Latency</span>
+                <span id="stat-avg-latency" class="stat-value">-</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">P50 / P95 / P99</span>
+                <span id="stat-percentiles" class="stat-value" style="font-size: 1.1rem;">-</span>
+            </div>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <!-- Runs Table -->
+        <div class="results-section">
+            <h3><i class="fas fa-list"></i> Recent Execution Runs</h3>
+            <div class="table-container">
+                <table id="runsTable">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>Run Name</th>
+                            <th>Type</th>
+                            <th>Latency (ms)</th>
+                            <th>Start Time</th>
+                            <th>End Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="runsBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 100px;">
+                                <span class="spinner"></span> Loading traces...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <button id="prevBtn" onclick="changePage(-1)" disabled>Previous</button>
+                <button id="nextBtn" onclick="changePage(1)">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Side Panel -->
+    <div id="overlay" class="overlay" onclick="closePanel()"></div>
+    <div id="sidePanel" class="side-panel">
+        <div class="panel-header">
+            <h3>Run Details</h3>
+            <button onclick="closePanel()"
+                style="background: transparent; color: var(--text-secondary); box-shadow: none; border: 1px solid var(--border-color); width: 32px; height: 32px; padding: 0;">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div id="panelContent" class="panel-content">
+            <!-- Loaded dynamically -->
+        </div>
+    </div>
+
+    <script>
+        // AUTH CHECK
+        if (!localStorage.getItem('token')) {
+            window.location.href = '/login';
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+
+        let currentPage = 0;
+        const pageSize = 20;
+
+        async function fetchStats() {
+            try {
+                const response = await fetch('/api/langsmith/stats');
+                const stats = await response.json();
+
+                document.getElementById('stat-total').textContent = stats.total_traces;
+                document.getElementById('stat-error-rate').textContent = stats.error_rate + '%';
+                document.getElementById('stat-avg-latency').textContent = stats.avg_latency.toFixed(2) + ' sec';
+                document.getElementById('stat-percentiles').textContent = `${stats.p50.toFixed(2)} / ${stats.p95.toFixed(2)} / ${stats.p99.toFixed(2)} sec`;
+            } catch (e) {
+                console.error("Failed to fetch stats", e);
+            }
+        }
+
+        async function fetchRuns(offset = 0) {
+            const body = document.getElementById('runsBody');
+            body.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 100px;"><span class="spinner"></span> Loading traces...</td></tr>';
+
+            try {
+                const response = await fetch(`/api/langsmith/runs?limit=${pageSize}&offset=${offset}`);
+                const runs = await response.json();
+
+                if (!runs || runs.length === 0) {
+                    body.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 100px; color: var(--text-secondary);">No traces found.</td></tr>';
+                    document.getElementById('nextBtn').disabled = true;
+                    return;
+                }
+
+                body.innerHTML = '';
+                runs.forEach(run => {
+                    const row = document.createElement('tr');
+                    row.style.cursor = 'pointer';
+                    row.onclick = () => showRunDetails(run.id);
+
+                    const startTime = new Date(run.start_time).toLocaleString();
+                    const latency = (run.latency !== undefined && run.latency !== null) ? run.latency.toFixed(2) + ' sec' : '-';
+
+                    row.innerHTML = `
+                        <td><span class="status-badge status-${run.status}">${run.status}</span></td>
+                        <td>${run.name || 'Unnamed'}</td>
+                        <td style="font-size: 0.85rem; color: var(--text-secondary);">${run.run_type}</td>
+                        <td>${latency}</td>
+                        <td style="font-size: 0.85rem; color: var(--text-secondary);">${startTime}</td>
+                        <td style="font-size: 0.85rem; color: var(--text-secondary);">${run.end_time ? new Date(run.end_time).toLocaleString() : '-'}</td>
+                    `;
+                    body.appendChild(row);
+                });
+
+                document.getElementById('nextBtn').disabled = runs.length < pageSize;
+                document.getElementById('prevBtn').disabled = offset === 0;
+
+            } catch (e) {
+                body.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 100px; color: var(--danger-color);">Error loading traces. Please try again.</td></tr>';
+            }
+        }
+
+        async function showRunDetails(runId) {
+            const panel = document.getElementById('sidePanel');
+            const overlay = document.getElementById('overlay');
+            const content = document.getElementById('panelContent');
+
+            overlay.classList.add('open');
+            panel.classList.add('open');
+            content.innerHTML = '<div style="text-align: center; padding: 50px;"><span class="spinner"></span> Loading details...</div>';
+
+            try {
+                const response = await fetch(`/api/langsmith/runs/${runId}`);
+                const run = await response.json();
+
+                let childrenHtml = '';
+                if (run.children && run.children.length > 0) {
+                    childrenHtml = '<div class="section-title">Child Runs</div>';
+                    run.children.forEach(child => {
+                        const statusColor = child.status === 'success' ? 'var(--success-color)' : 'var(--danger-color)';
+                        childrenHtml += `
+                            <div class="child-run-item">
+                                <span>${child.name} (${child.run_type})</span>
+                                <span style="color: ${statusColor}; font-weight: 600;">${(child.latency * 1000).toFixed(0)} ms</span>
+                            </div>
+                        `;
+                    });
+                }
+
+                content.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 20px;">
+                        <span style="font-size: 0.8rem; color: var(--text-secondary);">RUN ID</span>
+                        <span style="font-family: monospace; font-weight: 600;">${run.id}</span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">STATUS</span>
+                            <div style="margin-top: 5px;">
+                                <span class="status-icon ${run.status === 'success' ? 'status-success' : 'status-error'}">
+                                    <i class="fas ${run.status === 'success' ? 'fa-check' : 'fa-times'}"></i>
+                                </span>
+                                <span style="font-weight: 600; text-transform: uppercase; margin-left: 5px;">${run.status}</span>
+                            </div>
+                        </div>
+                            <div>
+                                <span style="font-size: 0.8rem; color: var(--text-secondary);">LATENCY</span>
+                                <div style="font-weight: 600; margin-top: 5px;">
+                                    ${(run.latency !== undefined && run.latency !== null) ? run.latency.toFixed(2) + ' sec' : '-'}
+                                </div>
+                            </div>
+                    </div>
+
+                    <div class="section-title">Timeline</div>
+                    <div style="font-size: 0.9rem;">
+                        <div>Started: ${new Date(run.start_time).toLocaleString()}</div>
+                        <div>Ended: ${run.end_time ? new Date(run.end_time).toLocaleString() : 'N/A'}</div>
+                    </div>
+
+                    <div class="section-title">Input</div>
+                    <div class="json-block">${JSON.stringify(run.inputs, null, 2)}</div>
+
+                    <div class="section-title">Output</div>
+                    <div class="json-block">${JSON.stringify(run.outputs, null, 2)}</div>
+
+                    ${run.error ? `
+                    <div class="section-title" style="color: var(--danger-color);">Error</div>
+                    <div class="json-block" style="background: #fef2f2; border-color: #fecaca; color: #b91c1c;">${run.error}</div>
+                    ` : ''}
+
+                    <div class="section-title">Metadata & Tags</div>
+                    <div class="json-block">${JSON.stringify({
+                    extra: run.extra,
+                    tags: run.tags
+                }, null, 2)}</div>
+
+                    ${childrenHtml}
+                `;
+            } catch (e) {
+                content.innerHTML = '<div style="color: var(--danger-color); padding: 50px;">Failed to load details.</div>';
+            }
+        }
+
+        function closePanel() {
+            document.getElementById('sidePanel').classList.remove('open');
+            document.getElementById('overlay').classList.remove('open');
+        }
+
+        function changePage(dir) {
+            currentPage += dir;
+            if (currentPage < 0) currentPage = 0;
+            fetchRuns(currentPage * pageSize);
+        }
+
+        function showStatus(msg, type) {
+            const status = document.getElementById('statusMessage');
+            status.innerHTML = msg;
+            status.className = `status-message ${type}`;
+            status.style.display = 'block';
+            setTimeout(() => { status.style.display = 'none'; }, 5000);
+        }
+
+        // Init
+        fetchStats();
+        fetchRuns();
+    </script>
+</body>
+
+</html>
