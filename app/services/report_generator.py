@@ -64,7 +64,7 @@ def generate_charts(all_issues):
     # Chart 1: Severity Distribution
     severity_counts = df_issues['severity'].value_counts()
     plt.figure(figsize=(6, 4))
-    colors = [COLORS['danger'] if s in ['High', 'Critical'] else COLORS['warning'] if s == 'Medium' else COLORS['success'] for s in severity_counts.index]
+    colors = [COLORS['danger'] if s == 'Critical' else COLORS['warning'] if s == 'Warning' else COLORS['success'] for s in severity_counts.index]
     # Convert rgb to 0-1 range for matplotlib
     norm_colors = [(r/255, g/255, b/255) for r, g, b in colors]
     
@@ -107,7 +107,7 @@ def generate_pdf_report(tables, db: Session):
         datasets_info.append({
             "name": dataset_name,
             "count": len(issue_list),
-            "high": len([i for i in issue_list if i["severity"] == "High"])
+            "critical": len([i for i in issue_list if i["severity"] in ["Critical", "High"]])
         })
 
     # 1. Dashboard Cover
@@ -122,14 +122,14 @@ def generate_pdf_report(tables, db: Session):
     pdf.set_text_color(*COLORS['accent'])
     pdf.cell(60, 15, str(len(all_issues)), 0, 0, 'C')
     pdf.cell(60, 15, str(len(datasets_info)), 0, 0, 'C')
-    pdf.cell(60, 15, str(len([i for i in all_issues if i['severity'] == 'High'])), 0, 1, 'C')
+    pdf.cell(60, 15, str(len([i for i in all_issues if i['severity'] == 'Critical'])), 0, 1, 'C')
     
     pdf.set_font('Helvetica', '', 10)
     pdf.set_text_color(100, 116, 139)
     pdf.set_x(15)
     pdf.cell(60, 5, 'Total Observations', 0, 0, 'C')
     pdf.cell(60, 5, 'Datasets Audited', 0, 0, 'C')
-    pdf.cell(60, 5, 'High Severity Flags', 0, 1, 'C')
+    pdf.cell(60, 5, 'Critical Severity Flags', 0, 1, 'C')
     pdf.ln(20)
 
     # 2. Analytics Visuals
@@ -150,9 +150,9 @@ def generate_pdf_report(tables, db: Session):
     pdf.set_text_color(*COLORS['primary'])
     risk_summary = (
         "Based on the AI-driven validation, the primary risks identified relate to "
-        f"{'high-severity clinical anomalies' if any(i['severity'] == 'High' for i in all_issues) else 'minor data inconsistencies'}. "
+        f"{'critical clinical anomalies' if any(i['severity'] in ['Critical', 'High'] for i in all_issues) else 'minor data inconsistencies'}. "
         "These observations often stem from legacy data entry rituals or missing interoperability checks. "
-        "Immediate attention to 'High' severity flags is recommended to ensure patient safety and diagnostic accuracy."
+        "Immediate attention to 'Critical' severity flags is recommended to ensure patient safety and diagnostic accuracy."
     )
     pdf.multi_cell(0, 7, risk_summary)
     pdf.ln(10)
@@ -193,7 +193,7 @@ def generate_pdf_report(tables, db: Session):
         
         # Severity Mini-badge
         sev = issue['severity']
-        sev_color = COLORS['danger'] if sev == 'High' else COLORS['warning'] if sev == 'Medium' else COLORS['success']
+        sev_color = COLORS['danger'] if sev in ['Critical', 'High'] else COLORS['warning'] if sev in ['Warning', 'Medium'] else COLORS['success']
         pdf.set_text_color(*sev_color)
         pdf.set_font('Helvetica', 'B', 8)
         pdf.cell(20, row_height, sev, 0, 0, 'C', True)

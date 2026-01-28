@@ -54,7 +54,10 @@ def get_stats(db: Session = Depends(get_db)):
     total_datasets = db.query(func.count(func.distinct(combined_query.c.dataset_name))).scalar()
     
     # Critical Issues
-    critical_issues = db.query(func.count(combined_query.c.id)).filter(combined_query.c.severity == "Critical").scalar()
+    # Critical Issues (Map both 'Critical' and 'High')
+    critical_issues = db.query(func.count(combined_query.c.id)).filter(
+        combined_query.c.severity.in_(["Critical", "High"])
+    ).scalar() or 0
     
     critical_rate = 0
     if total_issues and total_issues > 0:
@@ -68,7 +71,19 @@ def get_stats(db: Session = Depends(get_db)):
         func.count(combined_query.c.id)
     ).group_by(combined_query.c.severity).all()
     
-    severity_data = {sev: count for sev, count in severity_counts}
+    severity_data = {"Critical": 0, "Warning": 0, "Info": 0}
+    for sev, count in severity_counts:
+        if not sev: continue
+        # Map legacy terms
+        if sev == "High": 
+            severity_data["Critical"] += count
+        elif sev == "Medium":
+            severity_data["Warning"] += count
+        elif sev in severity_data:
+            severity_data[sev] += count
+        else:
+            # Handle unknown or mixed types gracefully
+            severity_data[sev] = count
     
     # Top Problematic Columns
     top_columns = db.query(

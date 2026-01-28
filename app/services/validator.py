@@ -26,7 +26,7 @@ def rule_validation(df: pd.DataFrame):
     issues = []
     
     if df.empty:
-        return [{"row": "N/A", "column": "N/A", "issue": "The dataset is empty.", "severity": "High"}]
+        return [{"row": "N/A", "column": "N/A", "issue": "The dataset is empty.", "severity": "Critical"}]
 
     mapping = infer_schema(df)
 
@@ -38,7 +38,7 @@ def rule_validation(df: pd.DataFrame):
                 "row": idx + 2,
                 "column": col,
                 "issue": "Missing value detected.",
-                "severity": "High",
+                "severity": "Critical",
                 "original_value": "None",
                 "corrected_value": "Missing",
                 "reason": "Missing values must be distinguishable from zero."
@@ -54,7 +54,7 @@ def rule_validation(df: pd.DataFrame):
                 "row": "Multiple",
                 "column": "All",
                 "issue": f"Duplicate row detected ({row['count']} times).",
-                "severity": "Medium",
+                "severity": "Warning",
                 "original_value": "Duplicate Record",
                 "corrected_value": "Flagged",
                 "reason": "Auditability requirement: duplicates flagged for review."
@@ -71,7 +71,7 @@ def rule_validation(df: pd.DataFrame):
                 "row": idx + 2,
                 "column": col,
                 "issue": "[SAFE IMPROVEMENT] Clinical temperature outlier.",
-                "severity": "High",
+                "severity": "Critical",
                 "original_value": str(row[col]),
                 "corrected_value": "Missing",
                 "reason": "Temp < 34 or > 42 is considered clinically invalid."
@@ -86,7 +86,7 @@ def rule_validation(df: pd.DataFrame):
                 "row": idx + 2,
                 "column": col,
                 "issue": "[SAFE IMPROVEMENT] Age exceeds clinical protocol limit.",
-                "severity": "High",
+                "severity": "Critical",
                 "original_value": str(row[col]),
                 "corrected_value": "Invalid",
                 "reason": "Age > 90 is outside study parameters."
@@ -101,7 +101,7 @@ def rule_validation(df: pd.DataFrame):
                 "row": idx + 2,
                 "column": col,
                 "issue": "[SAFE IMPROVEMENT] Parasitaemia density exceeds limit.",
-                "severity": "Medium",
+                "severity": "Warning",
                 "original_value": str(row[col]),
                 "corrected_value": "Missing",
                 "reason": "Density > 500k is treated as censored/missing per protocol."
@@ -118,7 +118,7 @@ def rule_validation(df: pd.DataFrame):
                 "row": idx + 2,
                 "column": w_col,
                 "issue": "[SAFE IMPROVEMENT] Weight-Age mismatch detected.",
-                "severity": "Medium",
+                "severity": "Warning",
                 "original_value": f"Weight:{row[w_col]}, Age:{row[a_col]}",
                 "corrected_value": "Dropped",
                 "reason": "Weight unrealistic for age. Protocol: Keep age, drop weight."
@@ -142,7 +142,7 @@ def rule_validation(df: pd.DataFrame):
                 "row": idx + 2,
                 "column": col,
                 "issue": f"Value {row[col]} is a statistical outlier.",
-                "severity": "Medium",
+                "severity": "Warning",
                 "original_value": str(row[col]),
                 "corrected_value": "Keep",
                 "reason": f"Standard IQR Outlier (Range: {lower_bound:.2f} - {upper_bound:.2f})"
