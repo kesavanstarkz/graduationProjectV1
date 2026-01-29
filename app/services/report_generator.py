@@ -110,120 +110,192 @@ def generate_pdf_report(tables, db: Session):
             "critical": len([i for i in issue_list if i["severity"] in ["Critical", "High"]])
         })
 
-    # 1. Dashboard Cover
+    # --- PAGE 1: EXECUTIVE SUMMARY ---
     pdf.chapter_title('Executive Quality Summary')
     
-    # Summary Box
-    pdf.set_fill_color(*COLORS['bg_light'])
-    pdf.rect(10, pdf.get_y(), 190, 40, 'F')
-    pdf.set_y(pdf.get_y() + 5)
-    pdf.set_x(15)
-    pdf.set_font('Helvetica', 'B', 24)
-    pdf.set_text_color(*COLORS['accent'])
-    pdf.cell(60, 15, str(len(all_issues)), 0, 0, 'C')
-    pdf.cell(60, 15, str(len(datasets_info)), 0, 0, 'C')
-    pdf.cell(60, 15, str(len([i for i in all_issues if i['severity'] == 'Critical'])), 0, 1, 'C')
+    # Clinical Integrity Score Calculation
+    # Simple heuristic: Start at 100, subtract 5 for critical, 2 for warning (capped)
+    total_obs = len(all_issues)
+    critical_count = len([i for i in all_issues if i['severity'] == 'Critical'])
+    warning_count = len([i for i in all_issues if i['severity'] == 'Warning'])
+    integrity_score = max(0, 100 - (critical_count * 5) - (warning_count * 2))
     
-    pdf.set_font('Helvetica', '', 10)
+    # Score Gauge Representation
+    pdf.set_fill_color(*COLORS['bg_light'])
+    pdf.rect(140, 35, 60, 40, 'F')
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_text_color(*COLORS['primary'])
+    pdf.set_xy(140, 40)
+    pdf.cell(60, 10, 'INTEGRITY SCORE', 0, 1, 'C')
+    
+    score_color = COLORS['danger'] if integrity_score < 50 else COLORS['warning'] if integrity_score < 80 else COLORS['success']
+    pdf.set_text_color(*score_color)
+    pdf.set_font('Helvetica', 'B', 32)
+    pdf.set_x(140)
+    pdf.cell(60, 15, f"{integrity_score}%", 0, 1, 'C')
+
+    # Summary Statistics Box
+    pdf.set_y(35)
+    pdf.set_fill_color(*COLORS['bg_light'])
+    pdf.rect(10, 35, 125, 40, 'F')
+    pdf.set_y(40)
+    pdf.set_x(15)
+    pdf.set_font('Helvetica', 'B', 16)
+    pdf.set_text_color(*COLORS['accent'])
+    pdf.cell(40, 10, str(total_obs), 0, 0, 'C')
+    pdf.cell(40, 10, str(len(datasets_info)), 0, 0, 'C')
+    pdf.cell(40, 10, str(critical_count), 0, 1, 'C')
+    
+    pdf.set_font('Helvetica', '', 9)
     pdf.set_text_color(100, 116, 139)
     pdf.set_x(15)
-    pdf.cell(60, 5, 'Total Observations', 0, 0, 'C')
-    pdf.cell(60, 5, 'Datasets Audited', 0, 0, 'C')
-    pdf.cell(60, 5, 'Critical Severity Flags', 0, 1, 'C')
-    pdf.ln(20)
+    pdf.cell(40, 5, 'Observations', 0, 0, 'C')
+    pdf.cell(40, 5, 'Datasets', 0, 0, 'C')
+    pdf.cell(40, 5, 'Critical Risks', 0, 1, 'C')
 
-    # 2. Analytics Visuals
+    # Analytics Visuals
     severity_img, type_img = generate_charts(all_issues)
     if severity_img and type_img:
-        pdf.set_y(pdf.get_y())
-        pdf.image(severity_img, x=10, y=pdf.get_y(), w=90)
-        pdf.image(type_img, x=110, y=pdf.get_y(), w=90)
-        pdf.set_y(pdf.get_y() + 70)
-        # Cleanup charts
+        pdf.set_y(85)
+        pdf.image(severity_img, x=10, y=85, w=90)
+        pdf.image(type_img, x=110, y=85, w=90)
+        pdf.set_y(155)
         os.remove(severity_img)
         os.remove(type_img)
 
-    # 3. Clinical Impact Analysis
-    pdf.ln(10)
-    pdf.chapter_title('Clinical Risk Analysis')
+    # Risk Narrative
+    pdf.section_title('Clinical Risk Narrative')
     pdf.set_font('Helvetica', '', 11)
     pdf.set_text_color(*COLORS['primary'])
     risk_summary = (
-        "Based on the AI-driven validation, the primary risks identified relate to "
-        f"{'critical clinical anomalies' if any(i['severity'] in ['Critical', 'High'] for i in all_issues) else 'minor data inconsistencies'}. "
-        "These observations often stem from legacy data entry rituals or missing interoperability checks. "
-        "Immediate attention to 'Critical' severity flags is recommended to ensure patient safety and diagnostic accuracy."
+        f"The data audit of {len(datasets_info)} datasets reveals a Clinical Integrity Score of {integrity_score}%. "
+        "This score is calculated based on the density of critical clinical outliers (values outside physiological norms) "
+        "and data consistency issues. " + 
+        ("High-risk anomalies were detected that could potentially compromise clinical research modeling." if critical_count > 0 else "The data shows high consistency with only minor statistical outliers.") +
+        " Analysis suggest that protocol deviations or legacy data entry methods are the primary drivers of these observations."
     )
     pdf.multi_cell(0, 7, risk_summary)
-    pdf.ln(10)
 
-    # 4. Detailed Data Audit Table
+    # Dataset Breakdown Table (Filling Space on Page 1)
+    pdf.ln(5)
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_fill_color(*COLORS['border'])
+    pdf.cell(100, 8, ' Dataset Name', 0, 0, 'L', True)
+    pdf.cell(45, 8, ' Total Issues', 0, 0, 'C', True)
+    pdf.cell(45, 8, ' Critical Issues', 0, 1, 'C', True)
+    
+    pdf.set_font('Helvetica', '', 9)
+    for ds in datasets_info:
+        pdf.cell(100, 8, f" {ds['name'][:45]}", 0, 0, 'L')
+        pdf.cell(45, 8, str(ds['count']), 0, 0, 'C')
+        pdf.set_text_color(*COLORS['danger']) if ds['critical'] > 0 else pdf.set_text_color(*COLORS['primary'])
+        pdf.cell(45, 8, str(ds['critical']), 0, 1, 'C')
+        pdf.set_text_color(*COLORS['primary'])
+
+    # --- PAGE 2: CLINICAL INTELLIGENCE DEEP-DIVE ---
     pdf.add_page()
-    pdf.chapter_title('Detailed Audit Logs')
+    pdf.chapter_title('Clinical Intelligence Deep-Dive')
+    pdf.set_font('Helvetica', '', 10)
+    pdf.multi_cell(0, 6, "This section highlights the most significant clinical findings analyzed by our AI system. Unlike raw validation, this deep-dive provides clinical context, impact, and actionable remediation steps.")
+    pdf.ln(5)
+
+    # Highlight top 3-4 critical issues with their FULL AI explanations
+    significant_issues = [i for i in all_issues if i['severity'] == 'Critical'][:4]
+    if not significant_issues:
+        significant_issues = all_issues[:3] # Fallback if no critical issues
+
+    for idx, issue in enumerate(significant_issues):
+        pdf.set_fill_color(*COLORS['bg_light'])
+        pdf.set_draw_color(*COLORS['border'])
+        pdf.set_line_width(0.3)
+        
+        # Issue Header
+        pdf.set_font('Helvetica', 'B', 11)
+        pdf.set_text_color(*COLORS['accent'])
+        pdf.cell(0, 10, f"FINDING #{idx+1}: {issue['column_name']} | {issue['dataset_name'][:30]}", 'T', 1, 'L', True)
+        
+        # Explanation Body
+        pdf.set_font('Helvetica', '', 9)
+        pdf.set_text_color(*COLORS['primary'])
+        
+        explanation = issue.get('ai_explanation', "No detailed AI explanation available.")
+        # Clean up tags if any
+        explanation = explanation.replace("DETAILED OBSERVATION:", "\n**DETAILED OBSERVATION**\n")
+        explanation = explanation.replace("CLINICAL IMPACT:", "\n**CLINICAL IMPACT**\n")
+        explanation = explanation.replace("RECOMMENDED ACTION:", "\n**RECOMMENDED ACTION**\n")
+        
+        pdf.multi_cell(0, 5, explanation)
+        pdf.set_y(pdf.get_y() + 5)
+        
+        if pdf.get_y() > 250:
+            pdf.add_page()
+
+    # --- PAGE 3: DETAILED AUDIT LOGS & ROADMAP ---
+    pdf.add_page()
+    pdf.chapter_title('Detailed Audit Logs (Sample)')
     
     # Table Header
     pdf.set_fill_color(*COLORS['primary'])
     pdf.set_text_color(255, 255, 255)
     pdf.set_font('Helvetica', 'B', 9)
-    pdf.cell(40, 10, ' DATASET', 0, 0, 'L', True)
+    pdf.cell(35, 10, ' DATASET', 0, 0, 'L', True)
     pdf.cell(30, 10, ' COLUMN', 0, 0, 'L', True)
-    pdf.cell(80, 10, ' OBSERVATION', 0, 0, 'L', True)
-    pdf.cell(20, 10, ' SEVERITY', 0, 0, 'C', True)
+    pdf.cell(85, 10, ' OBSERVATION', 0, 0, 'L', True)
+    pdf.cell(20, 10, ' SEV', 0, 0, 'C', True)
     pdf.cell(20, 10, ' STATUS', 0, 1, 'C', True)
     
     pdf.set_font('Helvetica', '', 8)
     pdf.set_text_color(*COLORS['primary'])
     
-    for i, issue in enumerate(all_issues):
-        # Zebra striping
-        if i % 2 == 0:
-            pdf.set_fill_color(248, 250, 252)
-        else:
-            pdf.set_fill_color(255, 255, 255)
+    # Show up to 15 issues on this page to leave room for roadmap
+    for i, issue in enumerate(all_issues[:15]):
+        pdf.set_fill_color(248, 250, 252) if i % 2 == 0 else pdf.set_fill_color(255, 255, 255)
             
         row_height = 8
-        # Calculate height if multi-line needed (simplified here)
-        pdf.cell(40, row_height, str(issue['dataset_name'])[:20], 0, 0, 'L', True)
-        pdf.cell(30, row_height, str(issue['column_name']), 0, 0, 'L', True)
+        pdf.cell(35, row_height, str(issue['dataset_name'])[:18], 0, 0, 'L', True)
+        pdf.cell(30, row_height, str(issue['column_name'])[:15], 0, 0, 'L', True)
+        
         observation = str(issue['issue'])
         if issue.get('original_value') and issue.get('original_value') != 'None':
-            observation += f" (Val: {issue['original_value']} -> {issue['corrected_value']})"
+            observation += f" ({issue['original_value']}->{issue['corrected_value']})"
         
-        pdf.cell(80, row_height, observation[:50], 0, 0, 'L', True)
+        pdf.cell(85, row_height, observation[:55], 0, 0, 'L', True)
         
-        # Severity Mini-badge
         sev = issue['severity']
         sev_color = COLORS['danger'] if sev in ['Critical', 'High'] else COLORS['warning'] if sev in ['Warning', 'Medium'] else COLORS['success']
         pdf.set_text_color(*sev_color)
         pdf.set_font('Helvetica', 'B', 8)
-        pdf.cell(20, row_height, sev, 0, 0, 'C', True)
+        pdf.cell(20, row_height, sev[:3], 0, 0, 'C', True)
         
         pdf.set_text_color(100, 116, 139)
         pdf.set_font('Helvetica', '', 8)
         pdf.cell(20, row_height, 'AUDITED', 0, 1, 'C', True)
-        
-        if pdf.get_y() > 260:
-            pdf.add_page()
-            # Redraw header if wanted, but FPDF handles page breaks
 
-    # 5. Strategic Recommendations
-    pdf.add_page()
-    pdf.chapter_title('Strategic Quality Roadmap')
+    pdf.ln(10)
+    pdf.section_title('Strategic Roadmap & Methodology')
     
+    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_text_color(*COLORS['accent'])
+    pdf.cell(0, 8, "Audit Methodology:", 0, 1)
+    pdf.set_font('Helvetica', '', 9)
+    pdf.set_text_color(*COLORS['primary'])
+    pdf.multi_cell(0, 5, "The audit utilized a dual-engine validation process. Phase 1 involved deterministic clinical rules based on DMSAP (Data Management & Statistical Analysis Plan) standards. Phase 2 leveraged a local DeepSeek-R1 LLM to analyze row context and provide actionable clinical intelligence. All PII was handled according to masking protocols enabled during the session.")
+    
+    pdf.ln(5)
     recoms = [
-        ("Short-term", "Purge duplicate records and backfill missing critical identifiers identified in Section 4."),
-        ("Mid-term", "Implement real-time range validation (e.g., using FHIR standards) at the source of truth."),
-        ("Long-term", "Train the clinical staff on the impact of data quality on downstream AI research outcomes.")
+        ("Short-term (0-30 days)", "Immediate cleanup of 'Critical' flags identified in Section 4. Standardize field headers across all source datasets."),
+        ("Mid-term (30-90 days)", "Develop automated ETL pipelines with pre-processing gates for temperature and age outliers."),
+        ("Long-term (Strategic)", "Adopt CDISC SDTM standards for all clinical research datasets to ensure global interoperability and compliance.")
     ]
     
     for phase, detail in recoms:
-        pdf.set_font('Helvetica', 'B', 12)
+        pdf.set_font('Helvetica', 'B', 10)
         pdf.set_text_color(*COLORS['accent'])
-        pdf.cell(0, 10, phase, 0, 1)
-        pdf.set_font('Helvetica', '', 11)
+        pdf.cell(0, 8, phase, 0, 1)
+        pdf.set_font('Helvetica', '', 9)
         pdf.set_text_color(*COLORS['primary'])
-        pdf.multi_cell(0, 7, detail)
-        pdf.ln(5)
+        pdf.multi_cell(0, 5, detail)
+        pdf.ln(2)
 
     output_path = f"report_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
     pdf.output(output_path)

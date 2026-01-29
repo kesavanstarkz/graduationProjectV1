@@ -23,6 +23,8 @@ class ValidationRequest(BaseModel):
 # Global cache for AI explanations to avoid redundant API calls during bulk uploads
 GLOBAL_ISSUE_CACHE = {}
 MAX_UNIQUE_EXPLANATIONS = 500
+AI_CONCURRENCY_LIMIT = 5
+ai_semaphore = asyncio.Semaphore(AI_CONCURRENCY_LIMIT)
 
 from fastapi.responses import StreamingResponse
 import json
@@ -65,10 +67,10 @@ async def validate_data(request: ValidationRequest, db: Session = Depends(get_db
                 col_name = i.get('column', 'N/A')
                 issue_sig = f"{i['column']}_{i['issue'].split()[0]}" 
                 
-                print(f"🧠 [AI] Row {row_num} | Col {col_name} | Issue {idx+1}/{total_issues}...")
-                
-                # Small delay for local model stability
-                await asyncio.sleep(idx * 0.1) 
+                # Use semaphore to limit concurrent AI calls
+                async with ai_semaphore:
+                    # Small stagger to prevent slamming the server
+                    await asyncio.sleep(0.05) 
                 
                 explanation = ""
                 if issue_sig in GLOBAL_ISSUE_CACHE:

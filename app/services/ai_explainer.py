@@ -131,6 +131,23 @@ import asyncio
 from langsmith import traceable
 from app.services.vector_db import find_similar_issue, store_explanation
 
+PII_FIELDS = {
+    "name", "patient_name", "email", "phone", "mobile",
+    "aadhaar", "ssn", "patient_id", "address"
+}
+
+def mask_pii(row: dict) -> dict:
+    """Masks PII values in a dictionary."""
+    if not row:
+        return {}
+    masked = {}
+    for k, v in row.items():
+        if k.lower() in PII_FIELDS and v not in (None, ""):
+            masked[k] = "*****"
+        else:
+            masked[k] = v
+    return masked
+
 @traceable(name="Clinical Issue Explanation")
 async def explain_issue(issue: dict, row_data: dict) -> str:
     # 1. First, check semantic cache (ChromaDB)
@@ -162,6 +179,47 @@ DETAILED OBSERVATION:
 CLINICAL IMPACT:
 RECOMMENDED ACTION:
 """
+#     PII_FIELDS = {
+#         "name", "patient_name", "email", "phone", "mobile",
+#         "aadhaar", "ssn", "patient_id", "address"
+#     }
+
+#     def mask_pii(row):
+#         masked = {}
+#         for k, v in row.items():
+#             if k.lower() in PII_FIELDS and v not in (None, ""):
+#                 masked[k] = "*****"
+#             else:
+#                 masked[k] = v
+#         return masked
+
+#     safe_row_data = mask_pii(row_data)
+#     prompt = f"""
+# You are a Senior Clinical Data Scientist.
+
+# Context:
+# - Issue Found: {issue.get('issue')}
+# - Column Name: {issue.get('column')}
+# - Row Data Context: {safe_row_data}
+
+# CRITICAL PRIVACY RULES:
+# - The Row Data Context MAY contain Personally Identifiable Information (PII).
+# - If any PII appears (e.g., patient_id, name, email, phone, address),
+#   you MUST NOT reveal the actual value.
+# - Replace all PII values with ***** in your explanation.
+# - Never infer, reconstruct, or expose real PII.
+
+# Instructions:
+# 1. Explain why this value is erroneous or suspicious in a clinical context.
+# 2. Describe the downstream clinical or analytical impact.
+# 3. Provide a concrete remediation step.
+
+# Return plain text only.
+# Use EXACT labels:
+# DETAILED OBSERVATION:
+# CLINICAL IMPACT:
+# RECOMMENDED ACTION:
+# """
 
     max_retries = 3
     for attempt in range(max_retries):
