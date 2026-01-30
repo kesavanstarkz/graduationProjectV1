@@ -1,5 +1,7 @@
 import os
 import pandas as pd
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from datetime import datetime
 from fpdf import FPDF
@@ -21,6 +23,10 @@ COLORS = {
 class PremiumClinicalReport(FPDF):
     def __init__(self):
         super().__init__()
+        # Register Unicode-compatible fonts
+        self.add_font("Arial", "", "app/static/fonts/arial.ttf")
+        self.add_font("Arial", "B", "app/static/fonts/arialbd.ttf")
+        self.add_font("Arial", "I", "app/static/fonts/ariali.ttf")
         self.set_auto_page_break(auto=True, margin=15)
         
     def header(self):
@@ -28,29 +34,29 @@ class PremiumClinicalReport(FPDF):
         self.set_fill_color(*COLORS['accent'])
         self.rect(0, 0, 210, 3, 'F')
         
-        self.set_font('Helvetica', 'B', 12)
+        self.set_font('Arial', 'B', 12)
         self.set_text_color(*COLORS['primary'])
         self.cell(0, 10, 'CLINICAL DATA QUALITY INTELLIGENCE REPORT', 0, 0, 'L')
         
-        self.set_font('Helvetica', '', 8)
+        self.set_font('Arial', '', 8)
         self.set_text_color(100, 116, 139) # Slate 500
         self.cell(0, 10, f'Generated: {datetime.now().strftime("%d %b %Y, %H:%M")}', 0, 1, 'R')
         self.ln(5)
 
     def footer(self):
         self.set_y(-15)
-        self.set_font('Helvetica', 'I', 8)
+        self.set_font('Arial', 'I', 8)
         self.set_text_color(148, 163, 184) # Slate 400
         self.cell(0, 10, f'Confidential Clinical Data - Page {self.page_no()}', 0, 0, 'C')
 
     def chapter_title(self, title):
-        self.set_font('Helvetica', 'B', 16)
+        self.set_font('Arial', 'B', 16)
         self.set_text_color(*COLORS['accent'])
         self.cell(0, 15, title, 0, 1, 'L')
         self.ln(2)
 
     def section_title(self, title):
-        self.set_font('Helvetica', 'B', 12)
+        self.set_font('Arial', 'B', 12)
         self.set_text_color(*COLORS['primary'])
         self.cell(0, 10, title, 0, 1, 'L')
         self.ln(2)
@@ -123,14 +129,14 @@ def generate_pdf_report(tables, db: Session):
     # Score Gauge Representation
     pdf.set_fill_color(*COLORS['bg_light'])
     pdf.rect(140, 35, 60, 40, 'F')
-    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(*COLORS['primary'])
     pdf.set_xy(140, 40)
     pdf.cell(60, 10, 'INTEGRITY SCORE', 0, 1, 'C')
     
     score_color = COLORS['danger'] if integrity_score < 50 else COLORS['warning'] if integrity_score < 80 else COLORS['success']
     pdf.set_text_color(*score_color)
-    pdf.set_font('Helvetica', 'B', 32)
+    pdf.set_font('Arial', 'B', 32)
     pdf.set_x(140)
     pdf.cell(60, 15, f"{integrity_score}%", 0, 1, 'C')
 
@@ -140,13 +146,13 @@ def generate_pdf_report(tables, db: Session):
     pdf.rect(10, 35, 125, 40, 'F')
     pdf.set_y(40)
     pdf.set_x(15)
-    pdf.set_font('Helvetica', 'B', 16)
+    pdf.set_font('Arial', 'B', 16)
     pdf.set_text_color(*COLORS['accent'])
     pdf.cell(40, 10, str(total_obs), 0, 0, 'C')
     pdf.cell(40, 10, str(len(datasets_info)), 0, 0, 'C')
     pdf.cell(40, 10, str(critical_count), 0, 1, 'C')
     
-    pdf.set_font('Helvetica', '', 9)
+    pdf.set_font('Arial', '', 9)
     pdf.set_text_color(100, 116, 139)
     pdf.set_x(15)
     pdf.cell(40, 5, 'Observations', 0, 0, 'C')
@@ -165,7 +171,7 @@ def generate_pdf_report(tables, db: Session):
 
     # Risk Narrative
     pdf.section_title('Clinical Risk Narrative')
-    pdf.set_font('Helvetica', '', 11)
+    pdf.set_font('Arial', '', 11)
     pdf.set_text_color(*COLORS['primary'])
     risk_summary = (
         f"The data audit of {len(datasets_info)} datasets reveals a Clinical Integrity Score of {integrity_score}%. "
@@ -178,13 +184,13 @@ def generate_pdf_report(tables, db: Session):
 
     # Dataset Breakdown Table (Filling Space on Page 1)
     pdf.ln(5)
-    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_font('Arial', 'B', 10)
     pdf.set_fill_color(*COLORS['border'])
     pdf.cell(100, 8, ' Dataset Name', 0, 0, 'L', True)
     pdf.cell(45, 8, ' Total Issues', 0, 0, 'C', True)
     pdf.cell(45, 8, ' Critical Issues', 0, 1, 'C', True)
     
-    pdf.set_font('Helvetica', '', 9)
+    pdf.set_font('Arial', '', 9)
     for ds in datasets_info:
         pdf.cell(100, 8, f" {ds['name'][:45]}", 0, 0, 'L')
         pdf.cell(45, 8, str(ds['count']), 0, 0, 'C')
@@ -195,7 +201,7 @@ def generate_pdf_report(tables, db: Session):
     # --- PAGE 2: CLINICAL INTELLIGENCE DEEP-DIVE ---
     pdf.add_page()
     pdf.chapter_title('Clinical Intelligence Deep-Dive')
-    pdf.set_font('Helvetica', '', 10)
+    pdf.set_font('Arial', '', 10)
     pdf.multi_cell(0, 6, "This section highlights the most significant clinical findings analyzed by our AI system. Unlike raw validation, this deep-dive provides clinical context, impact, and actionable remediation steps.")
     pdf.ln(5)
 
@@ -210,12 +216,12 @@ def generate_pdf_report(tables, db: Session):
         pdf.set_line_width(0.3)
         
         # Issue Header
-        pdf.set_font('Helvetica', 'B', 11)
+        pdf.set_font('Arial', 'B', 11)
         pdf.set_text_color(*COLORS['accent'])
         pdf.cell(0, 10, f"FINDING #{idx+1}: {issue['column_name']} | {issue['dataset_name'][:30]}", 'T', 1, 'L', True)
         
         # Explanation Body
-        pdf.set_font('Helvetica', '', 9)
+        pdf.set_font('Arial', '', 9)
         pdf.set_text_color(*COLORS['primary'])
         
         explanation = issue.get('ai_explanation', "No detailed AI explanation available.")
@@ -237,14 +243,14 @@ def generate_pdf_report(tables, db: Session):
     # Table Header
     pdf.set_fill_color(*COLORS['primary'])
     pdf.set_text_color(255, 255, 255)
-    pdf.set_font('Helvetica', 'B', 9)
+    pdf.set_font('Arial', 'B', 9)
     pdf.cell(35, 10, ' DATASET', 0, 0, 'L', True)
     pdf.cell(30, 10, ' COLUMN', 0, 0, 'L', True)
     pdf.cell(85, 10, ' OBSERVATION', 0, 0, 'L', True)
     pdf.cell(20, 10, ' SEV', 0, 0, 'C', True)
     pdf.cell(20, 10, ' STATUS', 0, 1, 'C', True)
     
-    pdf.set_font('Helvetica', '', 8)
+    pdf.set_font('Arial', '', 8)
     pdf.set_text_color(*COLORS['primary'])
     
     # Show up to 15 issues on this page to leave room for roadmap
@@ -264,20 +270,20 @@ def generate_pdf_report(tables, db: Session):
         sev = issue['severity']
         sev_color = COLORS['danger'] if sev in ['Critical', 'High'] else COLORS['warning'] if sev in ['Warning', 'Medium'] else COLORS['success']
         pdf.set_text_color(*sev_color)
-        pdf.set_font('Helvetica', 'B', 8)
+        pdf.set_font('Arial', 'B', 8)
         pdf.cell(20, row_height, sev[:3], 0, 0, 'C', True)
         
         pdf.set_text_color(100, 116, 139)
-        pdf.set_font('Helvetica', '', 8)
+        pdf.set_font('Arial', '', 8)
         pdf.cell(20, row_height, 'AUDITED', 0, 1, 'C', True)
 
     pdf.ln(10)
     pdf.section_title('Strategic Roadmap & Methodology')
     
-    pdf.set_font('Helvetica', 'B', 10)
+    pdf.set_font('Arial', 'B', 10)
     pdf.set_text_color(*COLORS['accent'])
     pdf.cell(0, 8, "Audit Methodology:", 0, 1)
-    pdf.set_font('Helvetica', '', 9)
+    pdf.set_font('Arial', '', 9)
     pdf.set_text_color(*COLORS['primary'])
     pdf.multi_cell(0, 5, "The audit utilized a dual-engine validation process. Phase 1 involved deterministic clinical rules based on DMSAP (Data Management & Statistical Analysis Plan) standards. Phase 2 leveraged a local DeepSeek-R1 LLM to analyze row context and provide actionable clinical intelligence. All PII was handled according to masking protocols enabled during the session.")
     
@@ -289,10 +295,10 @@ def generate_pdf_report(tables, db: Session):
     ]
     
     for phase, detail in recoms:
-        pdf.set_font('Helvetica', 'B', 10)
+        pdf.set_font('Arial', 'B', 10)
         pdf.set_text_color(*COLORS['accent'])
         pdf.cell(0, 8, phase, 0, 1)
-        pdf.set_font('Helvetica', '', 9)
+        pdf.set_font('Arial', '', 9)
         pdf.set_text_color(*COLORS['primary'])
         pdf.multi_cell(0, 5, detail)
         pdf.ln(2)
